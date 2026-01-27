@@ -1,4 +1,4 @@
-name: Build FluxVision VMS
+name: Build VMS
 
 on:
   push:
@@ -62,7 +62,6 @@ jobs:
         host: 'windows'
         target: 'desktop'
         arch: 'win64_msvc2019_64'
-        modules: 'qtbase qttools'
 
     - name: Configure CMake (Linux)
       if: runner.os == 'Linux'
