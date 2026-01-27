@@ -150,11 +150,7 @@ endif()
 
 # Find SQLite3 (for database)
 find_package(SQLite3 REQUIRED)
-if(SQLite3_FOUND)
-    message(STATUS "SQLite3: ${SQLite3_VERSION}")
-else()
-    message(FATAL_ERROR "SQLite3 not found. Please install SQLite3 development package.")
-endif()
+message(STATUS "SQLite3: ${SQLite3_VERSION}")
 
 # Platform-specific: KCMVP Crypto Libraries
 if(UNIX)

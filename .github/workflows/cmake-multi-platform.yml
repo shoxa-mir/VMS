@@ -47,12 +47,10 @@ jobs:
           libsqlite3-dev
         echo "Qt5 and dependencies installed"
 
-    - name: Install Windows dependencies
+    - name: Install Windows dependencies (vcpkg)
       if: runner.os == 'Windows'
       run: |
-        choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System'
-        choco install sqlite
-        echo "Dependencies installed"
+        vcpkg install sqlite3:x64-windows openssl:x64-windows --clean-after-build
 
     - name: Setup Qt (Windows)
       if: runner.os == 'Windows'
@@ -82,7 +80,8 @@ jobs:
         cd build
         cmake .. ^
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} ^
-          -DBUILD_TESTS=OFF
+          -DBUILD_TESTS=OFF ^
+          -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
 
     - name: Build (Linux)
       if: runner.os == 'Linux'
