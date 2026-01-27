@@ -1,12 +1,22 @@
 # src/core/CMakeLists.txt
 # Core engine (codec, network, GPU, threading, stream)
 
-add_library(${CMAKE_PROJECT_NAME}-core STATIC
-    .placeholder.cpp
+# Collect source files
+set(CORE_SOURCES
+    # GPU management
+    gpu/cuda_context.cpp
 )
 
-file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/.placeholder.cpp
-    "// Placeholder file\nnamespace ${CMAKE_PROJECT_NAME} { void core_init() {} }\n"
+# Collect header files (for IDE integration)
+set(CORE_HEADERS
+    codec/types.h
+    codec/decoder_interface.h
+    gpu/cuda_context.h
+)
+
+add_library(${CMAKE_PROJECT_NAME}-core STATIC
+    ${CORE_SOURCES}
+    ${CORE_HEADERS}
 )
 
 target_include_directories(${CMAKE_PROJECT_NAME}-core PUBLIC
