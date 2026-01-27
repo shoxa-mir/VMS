@@ -1,0 +1,84 @@
+# FluxVision VMS - Git Ignore
+
+# Build directories
+build/
+build-*/
+cmake-build-*/
+out/
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.cmake
+!CMakeLists.txt
+!cmake/Find*.cmake
+CTestTestfile.cmake
+compile_commands.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Compiled binaries
+*.o
+*.so
+*.a
+*.dylib
+*.dll
+*.exe
+fluxvision-server
+fluxvision-client
+hardware-detect
+
+# Qt
+*.qrc.depends
+*.moc
+moc_*.cpp
+ui_*.h
+qrc_*.cpp
+
+# Runtime data
+storage/
+logs/
+*.log
+
+# Encryption keys (NEVER commit!)
+*.key
+*.pem
+*.p12
+keystore/
+.keys/
+
+# Database files
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Configuration (use config.yaml.template instead)
+config/config.yaml
+!config/config.yaml.template
+
+# Test results
+Testing/
+*.gcov
+*.gcda
+*.gcno
+
+# Package files
+*.tar.gz
+*.zip
+*.deb
+*.rpm
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+.placeholder.cpp

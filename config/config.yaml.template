@@ -1,0 +1,211 @@
+# FluxVision VMS v2 - Configuration Template
+# Copy this file to config.yaml and customize for your deployment
+
+# Server configuration
+server:
+  # Network settings
+  bind_address: "0.0.0.0"
+  http_port: 8080
+  websocket_port: 8081
+
+  # TLS/SSL (for production)
+  enable_tls: false
+  cert_file: "/etc/fluxvision/server.crt"
+  key_file: "/etc/fluxvision/server.key"
+
+  # Multi-client settings
+  max_clients: 16
+  client_timeout_seconds: 300  # 5 minutes
+
+  # Server discovery (mDNS/Zeroconf)
+  enable_discovery: true
+  server_name: "FluxVision Office HQ"
+
+# Storage configuration
+storage:
+  # Base directory for recordings (no extension on files)
+  base_path: "./storage"
+
+  # Retention policy
+  max_days: 30  # Keep recordings for 30 days
+  max_size_gb: 1000  # Maximum storage size
+
+  # Segment duration
+  segment_duration_seconds: 10
+
+  # Cleanup schedule (cron format: minute hour day month weekday)
+  cleanup_schedule: "0 2 * * *"  # 2 AM daily
+
+# Database configuration
+database:
+  # SQLite database file
+  path: "./metadata.db"
+
+  # Encryption for sensitive fields (ARIA-256-CBC)
+  encrypt_fields: true
+
+# KCMVP encryption settings
+encryption:
+  # Video recording encryption (LEA-256-GCM)
+  enable_video_encryption: true
+  algorithm: "LEA-256-GCM"
+
+  # Key rotation
+  rotate_video_keys_daily: true
+  rotate_database_keys_monthly: true
+
+  # Key storage (TPM/HSM if available, else encrypted file)
+  keystore_path: "./keystore"
+  use_hardware_keystore: false  # Set to true if TPM/HSM available
+
+# Camera configuration
+cameras:
+  # Example camera 1
+  - id: "camera_01"
+    name: "Front Entrance"
+    enabled: true
+
+    # Main stream (for recording and high-quality viewing)
+    main_stream:
+      url: "rtsp://192.168.1.100:554/stream1"
+      username: "admin"
+      password: "password123"  # Will be encrypted
+      resolution: "1920x1080"
+      expected_fps: 25
+      expected_bitrate: 2000  # kbps
+
+    # Sub stream (for grid view, thumbnails)
+    sub_stream:
+      url: "rtsp://192.168.1.100:554/stream2"
+      username: "admin"
+      password: "password123"
+      resolution: "640x480"
+      expected_fps: 15
+      expected_bitrate: 500  # kbps
+
+    # Recording settings
+    recording:
+      enabled: true
+      mode: "continuous"  # continuous, motion, schedule
+      pre_event_seconds: 5
+      post_event_seconds: 10
+
+  # Example camera 2
+  - id: "camera_02"
+    name: "Parking Lot"
+    enabled: true
+    main_stream:
+      url: "rtsp://192.168.1.101:554/stream1"
+      username: "admin"
+      password: "password123"
+      resolution: "1920x1080"
+      expected_fps: 25
+      expected_bitrate: 2000
+    sub_stream:
+      url: "rtsp://192.168.1.101:554/stream2"
+      username: "admin"
+      password: "password123"
+      resolution: "640x480"
+      expected_fps: 15
+      expected_bitrate: 500
+    recording:
+      enabled: true
+      mode: "continuous"
+
+  # Add more cameras here...
+  # Up to 42+ cameras supported
+
+# User management
+users:
+  # Admin user (default: admin/admin - CHANGE THIS!)
+  - username: "admin"
+    password_hash: "pbkdf2_sha256$100000$..."  # Auto-generated on first run
+    role: "admin"  # admin, operator, viewer
+    allowed_cameras: []  # Empty = all cameras
+
+  # Operator user
+  - username: "operator1"
+    password_hash: "pbkdf2_sha256$100000$..."
+    role: "operator"
+    allowed_cameras: ["camera_01", "camera_02"]  # Limited access
+
+  # Viewer user
+  - username: "viewer1"
+    password_hash: "pbkdf2_sha256$100000$..."
+    role: "viewer"
+    allowed_cameras: ["camera_01"]  # Read-only, specific cameras
+
+# Quality profiles (adaptive streaming)
+quality_profiles:
+  fullscreen:
+    min_viewport_pixels: 1228800  # 1280x960
+    use_stream: "main"
+    decode_fps: 30
+    priority: 5
+
+  focused:
+    min_viewport_pixels: 307200  # 640x480
+    use_stream: "main"
+    decode_fps: 25
+    priority: 4
+
+  grid_view:
+    min_viewport_pixels: 102400  # 320x320
+    use_stream: "sub"
+    decode_fps: 15
+    priority: 3
+
+  thumbnail:
+    min_viewport_pixels: 10000  # 100x100
+    use_stream: "sub"
+    decode_fps: 5
+    priority: 2
+
+  paused:
+    min_viewport_pixels: 0
+    use_stream: "sub"
+    decode_fps: 1  # Keyframes only
+    priority: 1
+
+# Resource management
+resources:
+  # Thread pool sizes
+  network_threads: 8
+  decode_threads: 4
+  render_threads: 1
+  recording_threads: 4
+
+  # GPU memory management
+  max_vram_usage_gb: 4
+  decode_surface_pool_size: 256
+
+  # Bandwidth limits (per client)
+  max_client_bandwidth_mbps: 50
+  max_client_fullscreen_cameras: 4
+
+# AI/Analytics (future)
+ai:
+  enabled: false
+  reserved_gpu_memory_gb: 2
+  inference_fps: 15
+  models:
+    - type: "object_detection"
+      model_path: "./models/yolo.onnx"
+      cameras: ["camera_01", "camera_02"]
+
+# Logging
+logging:
+  level: "info"  # debug, info, warning, error
+  file: "./logs/fluxvision.log"
+  max_size_mb: 100
+  max_backups: 10
+  audit_log: "./logs/audit.log"  # ECDSA-signed audit log
+
+# System monitoring
+monitoring:
+  enable_stats: true
+  stats_interval_seconds: 5
+  alert_cpu_threshold: 90
+  alert_gpu_threshold: 90
+  alert_vram_threshold: 90
+  alert_disk_threshold: 90
