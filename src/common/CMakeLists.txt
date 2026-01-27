@@ -1,7 +1,7 @@
 # src/common/CMakeLists.txt
 # Common utilities and platform abstraction layer
 
-add_library(fluxvision-common STATIC
+add_library(${CMAKE_PROJECT_NAME}-common STATIC
     # Platform abstraction (will be added in Phase 0)
     # platform/filesystem.cpp
     # platform/linux/daemon.cpp (Linux only)
@@ -20,25 +20,25 @@ add_library(fluxvision-common STATIC
 # Create placeholder file
 file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/.placeholder.cpp
     "// Placeholder file - will be replaced with actual implementation\n"
-    "namespace FluxVision { void common_init() {} }\n"
+    "namespace ${CMAKE_PROJECT_NAME} { void common_init() {} }\n"
 )
 
-target_include_directories(fluxvision-common PUBLIC
+target_include_directories(${CMAKE_PROJECT_NAME}-common PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_SOURCE_DIR}/src
 )
 
-target_link_libraries(fluxvision-common PUBLIC
+target_link_libraries(${CMAKE_PROJECT_NAME}-common PUBLIC
     OpenSSL::SSL
     OpenSSL::Crypto
 )
 
 # Platform-specific libraries
 if(UNIX)
-    target_link_libraries(fluxvision-common PUBLIC pthread dl)
+    target_link_libraries(${CMAKE_PROJECT_NAME}-common PUBLIC pthread dl)
     if(KRYPTOAPI_LIB)
-        target_link_libraries(fluxvision-common PUBLIC ${KRYPTOAPI_LIB})
+        target_link_libraries(${CMAKE_PROJECT_NAME}-common PUBLIC ${KRYPTOAPI_LIB})
     endif()
 elseif(WIN32)
-    target_link_libraries(fluxvision-common PUBLIC ws2_32 advapi32)
+    target_link_libraries(${CMAKE_PROJECT_NAME}-common PUBLIC ws2_32 advapi32)
 endif()

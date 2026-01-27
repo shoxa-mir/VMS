@@ -2,14 +2,35 @@
 # Cross-platform Video Management System with KCMVP encryption
 
 cmake_minimum_required(VERSION 3.18)
-project(FluxVisionVMS VERSION 2.0.0 LANGUAGES CXX CUDA)
 
-# C++ and CUDA standards
+# ===================================================
+# Product Configuration (modify these to rebrand)
+# ===================================================
+set(PRODUCT_NAME "FluxVision VMS")              # Display name
+set(PRODUCT_NAME_INTERNAL "fluxvision")         # Internal name (lowercase, no spaces)
+set(PRODUCT_VERSION_MAJOR 2)
+set(PRODUCT_VERSION_MINOR 0)
+set(PRODUCT_VERSION_PATCH 0)
+set(PRODUCT_VERSION "${PRODUCT_VERSION_MAJOR}.${PRODUCT_VERSION_MINOR}.${PRODUCT_VERSION_PATCH}")
+
+project(${PRODUCT_NAME_INTERNAL} VERSION ${PRODUCT_VERSION} LANGUAGES CXX)
+
+# C++ standard
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CUDA_STANDARD 17)
-set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# Try to enable CUDA (optional)
+include(CheckLanguage)
+check_language(CUDA)
+if(CMAKE_CUDA_COMPILER)
+    enable_language(CUDA)
+    set(CMAKE_CUDA_STANDARD 17)
+    set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+    message(STATUS "CUDA language enabled")
+else()
+    message(STATUS "CUDA compiler not found, building without GPU support")
+endif()
 
 # Platform detection
 if(WIN32)
@@ -43,7 +64,7 @@ endif()
 
 message(STATUS "")
 message(STATUS "===================================================")
-message(STATUS "  FluxVision VMS v${PROJECT_VERSION}")
+message(STATUS "  ${PRODUCT_NAME} v${PROJECT_VERSION}")
 message(STATUS "  Platform: ${PLATFORM_NAME}")
 message(STATUS "  Build Type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "===================================================")
@@ -52,14 +73,15 @@ message(STATUS "")
 # CMake module path
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-# Find CUDA Toolkit (mandatory, same on both platforms)
-find_package(CUDAToolkit 12.0 REQUIRED)
+# Find CUDA Toolkit (optional for CI/CD, required for production builds)
+find_package(CUDAToolkit 12.0)
 if(CUDAToolkit_FOUND)
     message(STATUS "CUDA Toolkit: ${CUDAToolkit_VERSION}")
     message(STATUS "CUDA Include: ${CUDAToolkit_INCLUDE_DIRS}")
     message(STATUS "CUDA Libraries: ${CUDAToolkit_LIBRARY_DIR}")
+    add_definitions(-DHAVE_CUDA)
 else()
-    message(FATAL_ERROR "CUDA Toolkit 12.0+ not found. Please install from https://developer.nvidia.com/cuda-downloads")
+    message(WARNING "CUDA Toolkit not found. Hardware acceleration disabled. Install from https://developer.nvidia.com/cuda-downloads")
 endif()
 
 # Find NVDEC (Video Codec SDK)
@@ -213,24 +235,24 @@ add_subdirectory(tools)
 
 # Installation rules
 if(UNIX)
-    set(CMAKE_INSTALL_PREFIX "/opt/fluxvision" CACHE PATH "Install prefix")
+    set(CMAKE_INSTALL_PREFIX "/opt/${PRODUCT_NAME_INTERNAL}" CACHE PATH "Install prefix")
 
-    install(TARGETS fluxvision-server fluxvision-client
+    install(TARGETS ${PRODUCT_NAME_INTERNAL}-server ${PRODUCT_NAME_INTERNAL}-client
             RUNTIME DESTINATION bin
             LIBRARY DESTINATION lib
             ARCHIVE DESTINATION lib)
 
     install(FILES config/config.yaml
-            DESTINATION share/fluxvision/config)
+            DESTINATION share/${PRODUCT_NAME_INTERNAL}/config)
 
-    install(FILES scripts/fluxvision.service
+    install(FILES scripts/${PRODUCT_NAME_INTERNAL}.service
             DESTINATION lib/systemd/system
             OPTIONAL)
 
 elseif(WIN32)
-    set(CMAKE_INSTALL_PREFIX "C:/Program Files/FluxVision VMS" CACHE PATH "Install prefix")
+    set(CMAKE_INSTALL_PREFIX "C:/Program Files/${PRODUCT_NAME}" CACHE PATH "Install prefix")
 
-    install(TARGETS fluxvision-server fluxvision-client
+    install(TARGETS ${PRODUCT_NAME_INTERNAL}-server ${PRODUCT_NAME_INTERNAL}-client
             RUNTIME DESTINATION bin
             LIBRARY DESTINATION bin
             ARCHIVE DESTINATION lib)
@@ -243,7 +265,7 @@ elseif(WIN32)
     get_filename_component(QT5_WINDEPLOYQT_EXECUTABLE ${QT5_QMAKE_EXECUTABLE} PATH)
     set(QT5_WINDEPLOYQT_EXECUTABLE "${QT5_WINDEPLOYQT_EXECUTABLE}/windeployqt.exe")
 
-    install(CODE "execute_process(COMMAND ${QT5_WINDEPLOYQT_EXECUTABLE} \${CMAKE_INSTALL_PREFIX}/bin/fluxvision-client.exe)")
+    install(CODE "execute_process(COMMAND ${QT5_WINDEPLOYQT_EXECUTABLE} \${CMAKE_INSTALL_PREFIX}/bin/${PRODUCT_NAME_INTERNAL}-client.exe)")
 endif()
 
 # Summary

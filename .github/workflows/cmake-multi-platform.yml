@@ -1,0 +1,106 @@
+name: Build FluxVision VMS
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main", "develop" ]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux GCC build
+          - os: ubuntu-22.04
+            c_compiler: gcc-11
+            cpp_compiler: g++-11
+            build_type: Release
+
+          # Windows MSVC build
+          - os: windows-latest
+            c_compiler: cl
+            cpp_compiler: cl
+            build_type: Release
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Linux dependencies
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          cmake \
+          pkg-config \
+          qtbase5-dev \
+          libqt5opengl5-dev \
+          libssl-dev \
+          libavformat-dev \
+          libavcodec-dev \
+          libavutil-dev \
+          libswscale-dev \
+          libsqlite3-dev
+        echo "Qt5 and dependencies installed"
+
+    - name: Install Windows dependencies
+      if: runner.os == 'Windows'
+      run: |
+        choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System'
+        choco install sqlite
+        echo "Dependencies installed"
+
+    - name: Setup Qt (Windows)
+      if: runner.os == 'Windows'
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: '5.15.2'
+        host: 'windows'
+        target: 'desktop'
+        arch: 'win64_msvc2019_64'
+        modules: 'qtbase qttools'
+
+    - name: Configure CMake (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        mkdir build
+        cd build
+        cmake .. \
+          -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} \
+          -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+          -DBUILD_TESTS=OFF
+
+    - name: Configure CMake (Windows)
+      if: runner.os == 'Windows'
+      shell: cmd
+      run: |
+        mkdir build
+        cd build
+        cmake .. ^
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} ^
+          -DBUILD_TESTS=OFF
+
+    - name: Build (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        cd build
+        make -j$(nproc)
+
+    - name: Build (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        cd build
+        cmake --build . --config ${{ matrix.build_type }}
+
+    - name: Upload build artifacts
+      if: success()
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ matrix.os }}-build
+        path: build/
+        retention-days: 7
