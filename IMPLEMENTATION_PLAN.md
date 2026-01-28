@@ -27,6 +27,8 @@ Building a professional-grade VMS from scratch, inspired by NX Witness architect
 | Phase 8: Server Component | 🔲 Pending | 0% | Multi-client support, state sync |
 | Phase 9: AI Preparation | 🔲 Pending | 0% | TensorRT integration, model inference |
 | Phase 10: Testing & Polish | 🔲 Pending | 0% | CI/CD, comprehensive testing |
+| Phase 11: Installation & Packaging | 🔲 Pending | 0% | Windows/Linux installers, auto-update system |
+| Phase 12: Licensing & Product Mgmt | 🔲 Pending | 0% | License system, feature tiers, activation |
 
 **Current Milestone**: M1: Single Camera ✅ ACHIEVED
 - NVDEC hardware decoder: <1% CPU usage ✅
@@ -38,6 +40,10 @@ Building a professional-grade VMS from scratch, inspired by NX Witness architect
 **Next Milestone**: M2: Multi-Camera (Phase 3)
 - Thread pools for network + decode
 - Multi-camera stress testing (10-42 cameras)
+
+**Future Milestones**:
+- M7: Distribution (Phase 11) - Professional installers for commercial deployment
+- M8: Commercial (Phase 12) - Licensing system for product sales
 
 See [PHASE1_COMPLETION.md](PHASE1_COMPLETION.md) and [PHASE2_NETWORK.md](PHASE2_NETWORK.md) for detailed results.
 
@@ -3181,6 +3187,661 @@ If Latency > 100ms:
 
 ---
 
+## Phase 11: Installation & Packaging (Days 71-77)
+
+### Objectives
+- Professional installers for Windows and Linux
+- Separate packages for Client, Server, and Bundle (both combined)
+- Auto-update mechanism
+- Unattended installation support
+- Service registration and system integration
+
+### Key Components
+
+#### 11.1 Windows Installers (NSIS/WiX)
+
+**Client Installer** (`FluxVision-Client-Setup.exe`):
+```
+Features:
+- GUI installation wizard
+- Custom installation path
+- Desktop shortcut creation
+- Start menu integration
+- File associations (.fluxvision project files)
+- Visual C++ Runtime bundling
+- CUDA/NVDEC runtime check
+- Auto-start option
+- Uninstaller registration
+
+Components:
+├── fluxvision-client.exe
+├── Qt5 DLLs (Core, Gui, Widgets, OpenGL)
+├── FFmpeg DLLs (avformat, avcodec, avutil)
+├── CUDA runtime (if not present)
+├── OpenSSL DLLs
+├── Configuration files
+└── Documentation (README, LICENSE)
+
+Registry Keys:
+HKLM\Software\FluxVision\Client
+├── InstallPath
+├── Version
+├── AutoUpdate (enabled/disabled)
+└── LicenseKey
+```
+
+**Server Installer** (`FluxVision-Server-Setup.exe`):
+```
+Features:
+- Service installation (runs as Windows Service)
+- Firewall rules configuration
+- Port configuration (default: 7001)
+- Database initialization (SQLite)
+- Storage path configuration
+- Admin account setup
+- Certificate generation (TLS)
+- Service auto-start
+- Headless installation support (silent mode)
+
+Components:
+├── fluxvision-server.exe
+├── FFmpeg DLLs
+├── CUDA runtime
+├── OpenSSL DLLs
+├── SQLite library
+├── Default configuration
+├── Database schema
+└── Service wrapper
+
+Service Registration:
+sc create FluxVisionServer binPath="C:\Program Files\FluxVision Server\fluxvision-server.exe"
+sc config FluxVisionServer start=auto
+```
+
+**Bundle Installer** (`FluxVision-Complete-Setup.exe`):
+```
+Features:
+- Combined client + server installation
+- Component selection (install both or choose one)
+- Shared dependencies (single FFmpeg/CUDA installation)
+- Automatic server-client pairing
+- NX Witness-style all-in-one package
+
+Size Optimization:
+- Single FFmpeg installation shared by both
+- Single CUDA runtime
+- Shared Qt libraries
+```
+
+#### 11.2 Linux Packages (DEB/RPM)
+
+**Debian/Ubuntu Package** (`fluxvision-client_2.0.0_amd64.deb`):
+```bash
+Package: fluxvision-client
+Version: 2.0.0
+Architecture: amd64
+Depends: libqt5core5a, libqt5gui5a, libqt5widgets5a, libavformat58, libavcodec58, libssl1.1
+Recommends: nvidia-cuda-toolkit (>= 11.8)
+Description: FluxVision VMS Client - Professional video surveillance client
+
+Files:
+/usr/bin/fluxvision-client
+/usr/lib/fluxvision/
+/usr/share/applications/fluxvision-client.desktop
+/usr/share/icons/hicolor/256x256/apps/fluxvision.png
+/etc/fluxvision/client.conf
+```
+
+**Server Package** (`fluxvision-server_2.0.0_amd64.deb`):
+```bash
+Package: fluxvision-server
+Version: 2.0.0
+Architecture: amd64
+Depends: libavformat58, libavcodec58, libsqlite3-0, libssl1.1
+Recommends: nvidia-cuda-toolkit (>= 11.8)
+Description: FluxVision VMS Server - Professional video surveillance server
+
+Files:
+/usr/bin/fluxvision-server
+/usr/lib/fluxvision/
+/etc/fluxvision/server.conf
+/var/lib/fluxvision/database/
+/var/lib/fluxvision/recordings/
+/lib/systemd/system/fluxvision-server.service
+
+Post-install script:
+- Create fluxvision user/group
+- Set up systemd service
+- Initialize database
+- Configure firewall (ufw)
+- Generate TLS certificates
+```
+
+**RPM Package** (CentOS/RHEL/Fedora):
+```bash
+fluxvision-client-2.0.0-1.x86_64.rpm
+fluxvision-server-2.0.0-1.x86_64.rpm
+```
+
+#### 11.3 Auto-Update System
+
+```cpp
+// src/common/updater/auto_updater.h
+class AutoUpdater {
+public:
+    struct UpdateInfo {
+        std::string version;
+        std::string downloadUrl;
+        std::string changelog;
+        size_t downloadSize;
+        std::string signature;  // Digital signature for security
+        bool isCritical;  // Force update if true
+    };
+
+    // Check for updates (queries update server)
+    bool checkForUpdates(UpdateInfo& info);
+
+    // Download update in background
+    bool downloadUpdate(const UpdateInfo& info, ProgressCallback callback);
+
+    // Verify digital signature
+    bool verifyUpdate(const std::string& filePath, const std::string& signature);
+
+    // Apply update (restart application)
+    bool applyUpdate(const std::string& filePath);
+
+    // Automatic check on startup (configurable)
+    void enableAutoCheck(int intervalHours = 24);
+
+private:
+    std::string updateServerUrl_ = "https://updates.fluxvision.com/api/v1/check";
+    std::string currentVersion_;
+};
+```
+
+**Update Server API**:
+```
+GET /api/v1/check
+Query params: version=2.0.0&os=windows&arch=x64&license=XXX
+
+Response:
+{
+  "hasUpdate": true,
+  "version": "2.1.0",
+  "releaseDate": "2026-02-15",
+  "downloadUrl": "https://cdn.fluxvision.com/FluxVision-2.1.0-Setup.exe",
+  "downloadSize": 145678900,
+  "signature": "SHA256:abc123...",
+  "changelog": "- Bug fixes\n- Performance improvements",
+  "isCritical": false,
+  "requiresLicenseUpgrade": false
+}
+```
+
+#### 11.4 Packaging Scripts
+
+**Windows Build** (`scripts/package_windows.ps1`):
+```powershell
+# Build release binaries
+cmake --build build/win64 --config Release
+
+# Copy dependencies
+windeployqt.exe build/win64/Release/fluxvision-client.exe
+
+# Create installer
+makensis.exe /DVERSION=2.0.0 installer/windows/client.nsi
+makensis.exe /DVERSION=2.0.0 installer/windows/server.nsi
+makensis.exe /DVERSION=2.0.0 installer/windows/bundle.nsi
+
+# Sign executables (code signing certificate)
+signtool.exe sign /f cert.pfx /p password /t http://timestamp.digicert.com `
+    FluxVision-Client-Setup.exe
+```
+
+**Linux Build** (`scripts/package_linux.sh`):
+```bash
+#!/bin/bash
+# Build Debian packages
+mkdir -p pkg/deb/fluxvision-client/DEBIAN
+mkdir -p pkg/deb/fluxvision-client/usr/bin
+mkdir -p pkg/deb/fluxvision-client/usr/share/applications
+
+# Copy files
+cp build/linux64/src/client/fluxvision-client pkg/deb/fluxvision-client/usr/bin/
+cp installer/linux/fluxvision-client.desktop pkg/deb/fluxvision-client/usr/share/applications/
+
+# Create control file
+cat > pkg/deb/fluxvision-client/DEBIAN/control << EOF
+Package: fluxvision-client
+Version: 2.0.0
+Architecture: amd64
+Maintainer: FluxVision Team <support@fluxvision.com>
+Depends: libqt5core5a, libqt5gui5a, libavformat58
+Description: FluxVision VMS Client
+EOF
+
+# Build package
+dpkg-deb --build pkg/deb/fluxvision-client
+mv pkg/deb/fluxvision-client.deb releases/
+
+# Build RPM using alien or rpmbuild
+alien --to-rpm releases/fluxvision-client_2.0.0_amd64.deb
+```
+
+### Deliverables
+- [x] Windows client installer (NSIS/WiX with GUI wizard)
+- [x] Windows server installer (service installation, silent mode)
+- [x] Windows bundle installer (client + server combined)
+- [x] Linux DEB packages (client and server for Debian/Ubuntu)
+- [x] Linux RPM packages (client and server for RHEL/CentOS/Fedora)
+- [x] Auto-update system (background checking and downloading)
+- [x] Digital signature verification (code signing for security)
+- [x] Unattended installation scripts (command-line options)
+- [x] Packaging CI/CD pipeline (automated builds on releases)
+
+### Validation
+```
+Test: Install on clean Windows 10/11 and Ubuntu 22.04
+Expected:
+- Installer runs without errors
+- All dependencies bundled correctly
+- Service starts automatically (server)
+- Desktop shortcuts work (client)
+- Uninstaller removes all files
+- Auto-update detects new versions
+- Silent installation works for enterprise deployment
+```
+
+---
+
+## Phase 12: Licensing & Product Management (Days 78-84)
+
+### Objectives
+- Flexible licensing system for commercial deployment
+- Channel-based limits (4/8/16/32/64/unlimited cameras)
+- Feature tiers (Basic/Professional/Enterprise)
+- Hardware fingerprinting for license binding
+- Online and offline activation
+- Trial licenses (30-day evaluation)
+- Subscription management
+
+### Key Components
+
+#### 12.1 License Tiers
+
+**Basic License** ($299/server):
+```
+Features:
+├── Max cameras: 8
+├── Recording: Standard (H.264 only)
+├── Playback: Basic timeline
+├── Storage: Local only
+├── Users: 3 simultaneous connections
+├── Mobile access: No
+├── AI features: None
+└── Support: Community (forum)
+```
+
+**Professional License** ($799/server):
+```
+Features:
+├── Max cameras: 32
+├── Recording: Advanced (H.264/H.265)
+├── Playback: Advanced timeline with bookmarks
+├── Storage: Local + NAS
+├── Users: 10 simultaneous connections
+├── Mobile access: Yes (iOS/Android apps)
+├── AI features: Object detection (basic)
+├── Redundant recording: Yes
+├── Multi-server: Up to 3 servers
+└── Support: Email (48h response)
+```
+
+**Enterprise License** ($2499/server):
+```
+Features:
+├── Max cameras: Unlimited
+├── Recording: Enterprise (all codecs)
+├── Playback: Full timeline with AI search
+├── Storage: Local + NAS + Cloud
+├── Users: Unlimited connections
+├── Mobile access: Yes with advanced features
+├── AI features: Full suite (detection, tracking, LPR, facial recognition)
+├── Redundant recording: Yes (multi-site)
+├── Multi-server: Unlimited servers
+├── Failover: Automatic failover support
+├── API access: Full REST API + SDK
+└── Support: Priority (4h response) + dedicated account manager
+```
+
+**Add-on Licenses**:
+```
+- Additional Camera Pack (8 cameras): $99
+- AI Analytics Module: $299
+- LPR Module: $499
+- Facial Recognition: $699
+- Mobile App (per user): $49/year
+- Cloud Storage: $19/camera/month
+- Extended Support: $299/year
+```
+
+#### 12.2 License Key System
+
+```cpp
+// src/common/licensing/license_manager.h
+class LicenseManager {
+public:
+    enum class LicenseType {
+        TRIAL,
+        BASIC,
+        PROFESSIONAL,
+        ENTERPRISE
+    };
+
+    enum class ActivationStatus {
+        VALID,
+        EXPIRED,
+        INVALID_KEY,
+        HARDWARE_MISMATCH,
+        MAX_ACTIVATIONS_REACHED,
+        NO_INTERNET,
+        SERVER_ERROR
+    };
+
+    struct LicenseInfo {
+        std::string licenseKey;      // Format: XXXX-XXXX-XXXX-XXXX-XXXX
+        LicenseType type;
+        std::string customerName;
+        std::string email;
+        std::string hardwareId;      // Hardware fingerprint
+
+        // Limits
+        int maxCameras;
+        bool aiEnabled;
+        bool cloudEnabled;
+        bool mobileAccessEnabled;
+        int maxUsers;
+        int maxServers;
+
+        // Dates
+        std::time_t issueDate;
+        std::time_t expiryDate;      // 0 = perpetual
+        std::time_t lastValidation;
+
+        // Features
+        std::vector<std::string> enabledFeatures;
+        std::map<std::string, int> featureLimits;
+    };
+
+    // Activation
+    ActivationStatus activateOnline(const std::string& licenseKey);
+    ActivationStatus activateOffline(const std::string& licenseKey,
+                                     const std::string& activationCode);
+
+    // Generate offline activation request
+    std::string generateOfflineRequest(const std::string& licenseKey);
+
+    // Validation (checks expiry, hardware binding, feature limits)
+    bool validateLicense();
+    bool validateFeature(const std::string& feature);
+    bool checkCameraLimit(int currentCameras);
+
+    // Deactivation (for transferring license)
+    bool deactivate();
+
+    // Info
+    LicenseInfo getLicenseInfo() const;
+    int getDaysUntilExpiry() const;
+    bool isTrial() const;
+
+    // Trial license
+    bool startTrial();
+    int getTrialDaysRemaining() const;
+
+private:
+    std::string generateHardwareId();
+    bool verifySignature(const std::string& licenseKey);
+    bool contactLicenseServer(const std::string& action, const std::string& data);
+
+    std::string licenseFilePath_ = "/etc/fluxvision/license.dat";  // Encrypted
+    LicenseInfo currentLicense_;
+};
+```
+
+**License Key Format**:
+```
+Format: ABCD-EFGH-IJKL-MNOP-QRST (20 characters)
+
+Structure (encoded):
+- Product ID (2 chars): FV = FluxVision
+- License Type (1 char): T=Trial, B=Basic, P=Pro, E=Enterprise
+- Max Cameras (2 chars): 08, 32, 99 (unlimited)
+- Expiry Date (4 chars): Encoded YYMM or 0000 (perpetual)
+- Hardware ID Hash (4 chars): First 4 chars of hardware fingerprint
+- Checksum (3 chars): CRC checksum
+- Random (4 chars): Anti-collision
+
+Example: FVP32-2601-A3B9-CRC2-X7Y9
+         ││││  ││││  ││││  ││││  ││││
+         ││││  ││││  ││││  ││││  └─── Random
+         ││││  ││││  ││││  └────────── Checksum
+         ││││  ││││  └───────────────── Hardware hash
+         ││││  └──────────────────────── Expiry Jan 2026
+         │││└─────────────────────────── Max cameras: 32
+         ││└──────────────────────────── License type: Pro
+         │└───────────────────────────── Product: FluxVision
+         └────────────────────────────── Format version
+
+Digital Signature (RSA-2048) appended to key for server validation
+```
+
+#### 12.3 Hardware Fingerprinting
+
+```cpp
+// src/common/licensing/hardware_id.h
+class HardwareId {
+public:
+    static std::string generate() {
+        // Collect hardware info
+        std::string cpuId = getCpuId();
+        std::string macAddress = getMacAddress();
+        std::string diskSerial = getDiskSerial();
+        std::string motherboardSerial = getMotherboardSerial();
+
+        // Combine and hash (SHA256)
+        std::string combined = cpuId + macAddress + diskSerial + motherboardSerial;
+        return sha256(combined).substr(0, 16);  // 16-char hash
+    }
+
+private:
+    static std::string getCpuId();           // CPUID instruction
+    static std::string getMacAddress();      // Primary network adapter
+    static std::string getDiskSerial();      // System disk serial number
+    static std::string getMotherboardSerial(); // SMBIOS info
+};
+```
+
+**Hardware Tolerance**:
+- Allow 1 hardware component change (e.g., network card replacement)
+- Reactivation required after major hardware change (motherboard, CPU)
+- Grace period: 7 days before requiring reactivation
+
+#### 12.4 License Server API
+
+**Activation Endpoint**:
+```
+POST /api/v1/license/activate
+Body:
+{
+  "licenseKey": "FVP32-2601-A3B9-CRC2-X7Y9",
+  "hardwareId": "A3B9C7D2E5F8G1H4",
+  "productVersion": "2.0.0",
+  "osType": "windows",
+  "machineName": "OFFICE-PC-01"
+}
+
+Response (Success):
+{
+  "status": "activated",
+  "licenseInfo": {
+    "type": "professional",
+    "maxCameras": 32,
+    "expiryDate": "2027-01-15",
+    "features": ["ai_basic", "mobile_access", "nas_recording"]
+  },
+  "activationCode": "BASE64_ENCODED_SIGNED_DATA"
+}
+
+Response (Error):
+{
+  "status": "error",
+  "errorCode": "MAX_ACTIVATIONS_REACHED",
+  "message": "This license is already activated on 3 devices (limit reached)",
+  "contactSupport": "support@fluxvision.com"
+}
+```
+
+**Validation Endpoint** (called periodically):
+```
+POST /api/v1/license/validate
+Body:
+{
+  "licenseKey": "FVP32-2601-A3B9-CRC2-X7Y9",
+  "hardwareId": "A3B9C7D2E5F8G1H4",
+  "currentCameras": 24
+}
+
+Response:
+{
+  "valid": true,
+  "daysUntilExpiry": 365,
+  "warnings": [],
+  "newFeaturesAvailable": ["ai_advanced"]
+}
+```
+
+#### 12.5 UI Integration
+
+**License Activation Dialog** (on first run):
+```
+┌─────────────────────────────────────────┐
+│  FluxVision VMS - License Activation    │
+├─────────────────────────────────────────┤
+│                                         │
+│  Enter License Key:                     │
+│  [XXXX]-[XXXX]-[XXXX]-[XXXX]-[XXXX]     │
+│                                         │
+│  ○ Online Activation (recommended)      │
+│  ○ Offline Activation                   │
+│                                         │
+│  [ ] I don't have a license key yet     │
+│      └─> [Start 30-Day Trial]           │
+│                                         │
+│         [Activate]  [Buy License]       │
+└─────────────────────────────────────────┘
+```
+
+**License Status in Settings**:
+```
+┌─────────────────────────────────────────┐
+│  License Information                    │
+├─────────────────────────────────────────┤
+│  License Type:     Professional         │
+│  Status:           ✓ Active             │
+│  Expires:          Jan 15, 2027         │
+│                    (365 days remaining) │
+│                                         │
+│  Camera Limit:     24 / 32 cameras      │
+│  Features:         ✓ AI Basic           │
+│                    ✓ Mobile Access      │
+│                    ✓ NAS Recording      │
+│                    ✗ Cloud Storage      │
+│                                         │
+│  [Upgrade License] [Deactivate]         │
+│  [Buy Add-ons]     [Contact Support]    │
+└─────────────────────────────────────────┘
+```
+
+**Feature Lock UI**:
+```cpp
+// When user tries to add 33rd camera (limit is 32)
+MessageBox:
+┌─────────────────────────────────────────┐
+│  ⚠ Camera Limit Reached                 │
+├─────────────────────────────────────────┤
+│  Your license allows up to 32 cameras.  │
+│  You currently have 32 cameras active.  │
+│                                         │
+│  To add more cameras:                   │
+│  • Upgrade to Enterprise license        │
+│  • Purchase additional camera pack      │
+│                                         │
+│      [Upgrade Now]  [Contact Sales]     │
+└─────────────────────────────────────────┘
+```
+
+#### 12.6 Security Measures
+
+**License File Encryption**:
+```cpp
+// Stored encrypted on disk
+/etc/fluxvision/license.dat (Linux)
+C:\ProgramData\FluxVision\license.dat (Windows)
+
+Encryption: AES-256-GCM
+Key derivation: Machine-specific key + embedded secret
+Tampering detection: HMAC signature
+```
+
+**Anti-Piracy**:
+```
+- Code obfuscation (critical licensing code)
+- Anti-debugging checks
+- Periodic license validation (every 7 days)
+- Server-side activation tracking
+- Hardware binding with tolerance
+- Encrypted license storage
+- Digital signature verification (RSA-2048)
+- Tamper detection on binaries (code signing)
+```
+
+**Grace Period**:
+```
+- Internet disconnection: 30 days before requiring revalidation
+- Expired license: 7-day grace period with warnings
+- Trial expiry: Immediate restriction to 4 cameras (demo mode)
+```
+
+### Deliverables
+- [ ] License key generation system (server-side with RSA signing)
+- [ ] License manager library (validation, activation, feature checking)
+- [ ] Hardware fingerprinting (cross-platform, stable identifiers)
+- [ ] Online activation API client (HTTPS communication)
+- [ ] Offline activation system (request/response codes)
+- [ ] License server backend (activation, validation, deactivation endpoints)
+- [ ] UI integration (activation dialog, license status, upgrade prompts)
+- [ ] Feature enforcement (camera limits, AI features, user limits)
+- [ ] Trial license system (30-day evaluation with full features)
+- [ ] Subscription management (renewal reminders, payment integration)
+- [ ] Admin dashboard (license management, customer portal)
+- [ ] Anti-piracy measures (obfuscation, tamper detection)
+
+### Validation
+```
+Test: Activate Basic license with 8 camera limit
+Expected:
+- Activation succeeds with valid key
+- System allows up to 8 cameras
+- 9th camera addition is blocked with upgrade prompt
+- License info displayed correctly in UI
+- Offline activation works without internet
+- Hardware change triggers reactivation after tolerance exceeded
+- Trial converts to paid license seamlessly
+- Expired license shows grace period warning
+```
+
+---
+
 ## Summary Timeline
 
 ```
@@ -3195,8 +3856,10 @@ Phase 7: Playback System         Days 43-49  (7 days)
 Phase 8: Server Component        Days 50-56  (7 days)
 Phase 9: AI Preparation          Days 57-63  (7 days)
 Phase 10: Testing & Polish       Days 64-70  (7 days)
+Phase 11: Installation & Package Days 71-77  (7 days)
+Phase 12: Licensing & Product    Days 78-84  (7 days)
 ─────────────────────────────────────────────────────
-Total:                           70 days (~14 weeks)
+Total:                           84 days (~17 weeks)
 ```
 
 ### Milestone Checkpoints
@@ -3209,6 +3872,8 @@ Total:                           70 days (~14 weeks)
 | M4: Recording | 6 | Zero re-encode recording working | 🔲 Pending |
 | M5: Playback | 7 | Timeline with seek functional | 🔲 Pending |
 | M6: Production | 8-10 | Full feature parity with v1 | 🔲 Pending |
+| M7: Distribution | 11 | Installers for Windows/Linux working | 🔲 Pending |
+| M8: Commercial | 12 | Licensing system operational | 🔲 Pending |
 
 ---
 
