@@ -202,7 +202,7 @@ bool RtspClient::parseRtpPacket(AVPacket* avPacket, RtpPacket& packet) {
     std::memcpy(packet.payload.data(), avPacket->data, avPacket->size);
 
     // Set timestamps
-    packet.timestamp = avPacket->pts != AV_NOPTS_VALUE ? avPacket->pts : avPacket->dts;
+    packet.timestamp = static_cast<uint32_t>(avPacket->pts != AV_NOPTS_VALUE ? avPacket->pts : avPacket->dts);
     packet.receiveTime = getCurrentTimeMicros();
 
     // RTP metadata (simplified - full RTP header parsing done in depacketizer)

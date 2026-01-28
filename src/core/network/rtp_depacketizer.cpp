@@ -103,7 +103,8 @@ bool RtpDepacketizer::processFragmentedNalUnit(const uint8_t* payload, size_t si
     uint8_t fuHeader = payload[1];
     bool startBit = (fuHeader & 0x80) != 0;
     bool endBit = (fuHeader & 0x40) != 0;
-    uint8_t nalType = fuHeader & 0x1F;
+    // NAL type is encoded in FU header but not needed for reassembly
+    // uint8_t nalType = fuHeader & 0x1F;
 
     if (startBit) {
         // Start of fragmented NAL unit

@@ -125,7 +125,7 @@ DecodeResult CpuDecoder::decode(const uint8_t* data, size_t size) {
 
     // Prepare packet
     packet_->data = const_cast<uint8_t*>(data);
-    packet_->size = size;
+    packet_->size = static_cast<int>(size);
 
     // Send packet to decoder
     int ret = avcodec_send_packet(codecCtx_, packet_);

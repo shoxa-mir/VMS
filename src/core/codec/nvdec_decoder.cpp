@@ -69,7 +69,7 @@ bool NvdecDecoder::createParser() {
 #ifdef HAVE_CUDA
     CUVIDPARSERPARAMS parserParams = {};
     parserParams.CodecType = (config_.codec == CodecType::H265) ? cudaVideoCodec_HEVC : cudaVideoCodec_H264;
-    parserParams.ulMaxNumDecodeSurfaces = getSurfacePoolSize(config_.quality);
+    parserParams.ulMaxNumDecodeSurfaces = static_cast<unsigned int>(getSurfacePoolSize(config_.quality));
     parserParams.ulMaxDisplayDelay = 1;  // Low latency
     parserParams.pUserData = this;
     parserParams.pfnSequenceCallback = handleVideoSequence;
@@ -105,7 +105,7 @@ bool NvdecDecoder::createDecoder(CUVIDEOFORMAT* format) {
     decoderInfo_.ulMaxWidth = config_.maxWidth;
     decoderInfo_.ulMaxHeight = config_.maxHeight;
 
-    decoderInfo_.ulNumDecodeSurfaces = getSurfacePoolSize(config_.quality);
+    decoderInfo_.ulNumDecodeSurfaces = static_cast<unsigned long>(getSurfacePoolSize(config_.quality));
     decoderInfo_.ulNumOutputSurfaces = 2;  // Double buffering for display
     decoderInfo_.ulCreationFlags = cudaVideoCreate_PreferCUVID;
     decoderInfo_.ulIntraDecodeOnly = 0;
@@ -115,8 +115,8 @@ bool NvdecDecoder::createDecoder(CUVIDEOFORMAT* format) {
 
     decoderInfo_.display_area.left = 0;
     decoderInfo_.display_area.top = 0;
-    decoderInfo_.display_area.right = format->display_area.right;
-    decoderInfo_.display_area.bottom = format->display_area.bottom;
+    decoderInfo_.display_area.right = static_cast<short>(format->display_area.right);
+    decoderInfo_.display_area.bottom = static_cast<short>(format->display_area.bottom);
 
     decoderInfo_.ulTargetWidth = format->display_area.right - format->display_area.left;
     decoderInfo_.ulTargetHeight = format->display_area.bottom - format->display_area.top;
@@ -222,7 +222,7 @@ DecodeResult NvdecDecoder::decode(const uint8_t* data, size_t size) {
     // Parse the bitstream
     CUVIDSOURCEDATAPACKET packet = {};
     packet.payload = data;
-    packet.payload_size = size;
+    packet.payload_size = static_cast<unsigned long>(size);
     packet.flags = CUVID_PKT_TIMESTAMP;
     packet.timestamp = 0;  // Will be set by parser callbacks
 
@@ -261,7 +261,7 @@ DecodedFrame* NvdecDecoder::getFrame() {
         Surface& surface = surfaces_[frameInfo.surfaceIndex];
 
         currentFrame_.cudaSurface = reinterpret_cast<void*>(surface.devicePtr);
-        currentFrame_.cudaPitch = surface.pitch;
+        currentFrame_.cudaPitch = static_cast<int>(surface.pitch);
         currentFrame_.width = decoderInfo_.ulTargetWidth;
         currentFrame_.height = decoderInfo_.ulTargetHeight;
         currentFrame_.format = PixelFormat::NV12;
@@ -273,8 +273,8 @@ DecodedFrame* NvdecDecoder::getFrame() {
         currentFrame_.data[1] = reinterpret_cast<uint8_t*>(surface.devicePtr + (currentFrame_.height * surface.pitch));
         currentFrame_.data[2] = nullptr;  // NV12 has only 2 planes
 
-        currentFrame_.pitch[0] = surface.pitch;
-        currentFrame_.pitch[1] = surface.pitch;  // UV plane has same pitch
+        currentFrame_.pitch[0] = static_cast<int>(surface.pitch);
+        currentFrame_.pitch[1] = static_cast<int>(surface.pitch);  // UV plane has same pitch
         currentFrame_.pitch[2] = 0;
 
         return &currentFrame_;
@@ -362,7 +362,7 @@ int CUDAAPI NvdecDecoder::handleVideoSequence(void* userData, CUVIDEOFORMAT* for
         }
     }
 
-    return getSurfacePoolSize(decoder->config_.quality);  // Return number of decode surfaces
+    return static_cast<int>(getSurfacePoolSize(decoder->config_.quality));  // Return number of decode surfaces
 }
 
 int CUDAAPI NvdecDecoder::handlePictureDecode(void* userData, CUVIDPICPARAMS* picParams) {
