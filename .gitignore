@@ -5,6 +5,7 @@ build/
 build-*/
 cmake-build-*/
 out/
+.claude/
 
 # CMake
 CMakeCache.txt
