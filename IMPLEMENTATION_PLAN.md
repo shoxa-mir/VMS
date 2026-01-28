@@ -10,6 +10,39 @@ Building a professional-grade VMS from scratch, inspired by NX Witness architect
 
 ---
 
+## Project Status
+
+**Last Updated**: 2026-01-28
+
+| Phase | Status | Completion | Notes |
+|-------|--------|------------|-------|
+| **Phase 0: Foundation Setup** | ✅ **COMPLETE** | 100% | Cross-platform build system (Windows + Linux/WSL), hardware detection tool |
+| **Phase 1: Core Decoder Engine** | ✅ **COMPLETE** | 100% | NVDEC + CPU decoders working, all tests PASSED on both platforms |
+| **Phase 2: Network Layer** | ✅ **COMPLETE** | 100% | RTSP client with FFmpeg, H.264 bitstream parsing, network tests PASSED |
+| Phase 3: Threading & Memory | 🔲 Pending | 0% | Thread pools, lock-free queues, memory management |
+| Phase 4: GPU Rendering | 🔲 Pending | 0% | CUDA-OpenGL interop, texture atlas rendering |
+| Phase 5: Qt UI Integration | 🔲 Pending | 0% | Main window, grid view, camera controls |
+| Phase 6: Recording Engine | 🔲 Pending | 0% | Zero-copy MKV recording, segment management |
+| Phase 7: Playback System | 🔲 Pending | 0% | Timeline, seek, export |
+| Phase 8: Server Component | 🔲 Pending | 0% | Multi-client support, state sync |
+| Phase 9: AI Preparation | 🔲 Pending | 0% | TensorRT integration, model inference |
+| Phase 10: Testing & Polish | 🔲 Pending | 0% | CI/CD, comprehensive testing |
+
+**Current Milestone**: M1: Single Camera ✅ ACHIEVED
+- NVDEC hardware decoder: <1% CPU usage ✅
+- Cross-platform builds working ✅
+- Hardware detection validated ✅
+- RTSP network layer working ✅
+- NAL unit extraction from H.264 bitstream ✅
+
+**Next Milestone**: M2: Multi-Camera (Phase 3)
+- Thread pools for network + decode
+- Multi-camera stress testing (10-42 cameras)
+
+See [PHASE1_COMPLETION.md](PHASE1_COMPLETION.md) and [PHASE2_NETWORK.md](PHASE2_NETWORK.md) for detailed results.
+
+---
+
 ## Target Architecture
 
 ```
@@ -1567,10 +1600,10 @@ VMS/
 ```
 
 ### Deliverables
-- [ ] Project skeleton created
-- [ ] CMake build system working
-- [ ] CUDA/NVDEC availability verified
-- [ ] Baseline benchmark completed (v1 performance numbers)
+- [x] Project skeleton created (complete directory structure with src/core, src/common, src/client, tools, cmake)
+- [x] CMake build system working (cross-platform: Windows + Linux/WSL, organized build/win64 and build/linux64)
+- [x] CUDA/NVDEC availability verified (hardware-detect tool confirms RTX 4080 SUPER capabilities)
+- [ ] Baseline benchmark completed (v1 performance numbers) - N/A: This is the first implementation (v2)
 
 ### Tasks
 
@@ -1653,11 +1686,11 @@ struct GPUFrame {
 ```
 
 ### Deliverables
-- [ ] IDecoder interface defined
-- [ ] NvdecDecoder working with single camera
-- [ ] CPU decoder fallback (FFmpeg/libavcodec)
-- [ ] Decoder factory with auto-detection
-- [ ] Unit tests for decoder
+- [x] IDecoder interface defined (src/core/codec/decoder_interface.h with full API)
+- [x] NvdecDecoder working with single camera (tested on both Windows + WSL, hardware acceleration confirmed)
+- [x] CPU decoder fallback (FFmpeg/libavcodec) (cpu_decoder.h/cpp working on both platforms)
+- [x] Decoder factory with auto-detection (decoder_factory.h/cpp with isNvdecAvailable())
+- [x] Unit tests for decoder (decoder-test tool with comprehensive validation, all tests PASSED)
 
 ### Validation
 ```
@@ -3138,14 +3171,14 @@ Total:                           70 days (~14 weeks)
 
 ### Milestone Checkpoints
 
-| Milestone | Phase | Success Criteria |
-|-----------|-------|------------------|
-| M1: Single Camera | 1-2 | One camera decoding with NVDEC, <3% CPU |
-| M2: Multi-Camera | 3 | 42 cameras decoding, <20% CPU |
-| M3: Live View | 4-5 | Full UI with smooth rendering |
-| M4: Recording | 6 | Zero re-encode recording working |
-| M5: Playback | 7 | Timeline with seek functional |
-| M6: Production | 8-10 | Full feature parity with v1 |
+| Milestone | Phase | Success Criteria | Status |
+|-----------|-------|------------------|--------|
+| M1: Single Camera | 1-2 | One camera decoding with NVDEC, <3% CPU | ✅ **COMPLETE** (<1% CPU achieved) |
+| M2: Multi-Camera | 3 | 42 cameras decoding, <20% CPU | 🔲 Pending |
+| M3: Live View | 4-5 | Full UI with smooth rendering | 🔲 Pending |
+| M4: Recording | 6 | Zero re-encode recording working | 🔲 Pending |
+| M5: Playback | 7 | Timeline with seek functional | 🔲 Pending |
+| M6: Production | 8-10 | Full feature parity with v1 | 🔲 Pending |
 
 ---
 

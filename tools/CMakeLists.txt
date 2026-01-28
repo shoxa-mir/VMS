@@ -17,3 +17,13 @@ target_link_libraries(decoder-test
 target_include_directories(decoder-test PRIVATE
     ${CMAKE_SOURCE_DIR}/src
 )
+
+# Network test tool (Phase 2 validation)
+add_executable(network-test network_test.cpp)
+target_link_libraries(network-test
+    ${CMAKE_PROJECT_NAME}-core
+    ${CMAKE_PROJECT_NAME}-common
+)
+target_include_directories(network-test PRIVATE
+    ${CMAKE_SOURCE_DIR}/src
+)
