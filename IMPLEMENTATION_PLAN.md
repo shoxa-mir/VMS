@@ -1040,7 +1040,7 @@ public:
 private:
     ServerConnection* server_;
     CameraGridWidget* gridWidget_;
-};
+};2
 ```
 
 #### Server Discovery (mDNS/Zeroconf)
@@ -1835,13 +1835,20 @@ See [PHASE2_NETWORK.md](PHASE2_NETWORK.md) for complete test results and impleme
 
 ---
 
-## Phase 3: Threading & Memory Management (Days 15-21)
+## Phase 3: Threading & Memory Management (Days 15-21) ✅ IN PROGRESS
+
+### Status
+**Completed**: Core threading infrastructure, memory management, stream pipeline
+**Remaining**: Integration testing, performance validation
+**Build Status**: ✅ Windows (0 warnings) | ✅ Linux (0 warnings)
 
 ### Objectives
-- Implement fixed-size thread pools
-- Lock-free queues for packet/frame passing
-- GPU memory pool with pre-allocated surfaces
-- Workload balancing across decode threads
+- ✅ Implement fixed-size thread pools
+- ✅ Lock-free queues for packet/frame passing
+- ✅ GPU memory pool with centralized VRAM tracking
+- ✅ Workload balancing across decode threads
+- 🔄 Integration testing with 42 cameras
+- 🔄 Performance validation
 
 ### Key Components
 
@@ -1974,12 +1981,120 @@ Total: 17 threads (vs 100+ in v1)
 ```
 
 ### Deliverables
-- [ ] ThreadPool implementation
-- [ ] LockFreeQueue implementation
-- [ ] GPUMemoryPool implementation
-- [ ] StreamManager with camera state
-- [ ] Integration test: 42 cameras through pipeline
-- [ ] Resource monitoring (CPU, RAM, VRAM per component)
+
+#### ✅ Completed (Days 15-20)
+
+**Threading Infrastructure:**
+- [x] **ThreadPool** (`src/core/threading/thread_pool.h/cpp`)
+  - Generic worker pool with task queue
+  - Template-based `submit()` with `std::future` return
+  - Per-thread statistics tracking
+  - Uses `std::invoke_result_t` (C++17) instead of deprecated `std::result_of`
+
+- [x] **BoundedQueue** (`src/core/threading/bounded_queue.h`)
+  - Lock-free SPSC (Single-Producer Single-Consumer) circular buffer
+  - Power-of-2 capacity for efficient modulo operations
+  - Cache-line padding (alignas(64)) to prevent false sharing
+  - `pushOrDropOldest()` for backpressure handling
+
+- [x] **NetworkThreadPool** (`src/core/threading/network_thread_pool.h/cpp`)
+  - 8 threads for network receive operations
+  - Round-robin camera assignment across threads
+  - Camera-to-thread mapping tracking
+
+- [x] **DecodeThreadPool** (`src/core/threading/decode_thread_pool.h/cpp`)
+  - 4 threads, each with persistent CUDA context
+  - Work-stealing from shared task queue
+  - Per-thread decode counters and busy flags
+  - CUDA context lifecycle management
+
+**Memory Management:**
+- [x] **GPUMemoryPool** (`src/core/gpu/memory_pool.h/cpp`)
+  - Centralized VRAM tracking and statistics
+  - Per-camera memory allocation tracking
+  - 3GB default limit with configurable threshold
+  - Warning at 90% utilization
+  - Note: NVDEC decoders maintain their own surface pools (API requirement)
+
+- [x] **CudaContext Multi-Context Support** (`src/core/gpu/cuda_context.h/cpp`)
+  - Added `createContext(deviceId)` static factory method
+  - Added `destroyContext(context)` cleanup method
+  - Enables per-thread CUDA contexts for decode pool
+
+**Stream Management:**
+- [x] **CameraStream** (`src/core/stream/camera_stream.h/cpp`)
+  - Per-camera state encapsulation (RtspClient + Decoder + PacketQueue)
+  - Lifecycle management (start/stop/reconnect)
+  - Quality transitions (PAUSED → THUMBNAIL → GRID_VIEW → FOCUSED → FULLSCREEN)
+  - State machine (STOPPED → CONNECTING → RUNNING → ERROR → RECONNECTING)
+
+- [x] **StreamManager** (`src/core/stream/stream_manager.h/cpp`)
+  - Multi-camera coordinator (42+ cameras)
+  - Add/remove cameras dynamically
+  - Frame callback mechanism for decoded frames
+  - Global statistics aggregation
+  - Network and decode loop initialization per camera
+
+- [x] **StreamPipeline** (`src/core/stream/pipeline.h/cpp`)
+  - Top-level integration of all Phase 3 components
+  - Wires together: NetworkThreadPool, DecodeThreadPool, GPUMemoryPool, StreamManager
+  - End-to-end initialization and shutdown
+  - Complete pipeline statistics
+
+#### 🔄 Pending (Days 21)
+
+- [ ] **Integration Test** (42 cameras, 60 seconds)
+  - Test harness for simultaneous 42 camera streams
+  - Resource monitoring (CPU, RAM, VRAM)
+  - Frame drop detection
+  - Auto-reconnection validation
+
+- [ ] **Performance Validation**
+  - CPU usage: target <20%
+  - RAM usage: target <600MB
+  - VRAM usage: target <3GB
+  - Thread count: verify <25
+  - No frame drops during 60s test
+
+### Implementation Notes
+
+**Architecture Highlights:**
+```
+8 Network Threads → 42 Per-Camera Queues (60 packets each) → 4 Decode Threads
+                            ↓                                       ↓
+                    Lock-free SPSC queues                  Work-stealing decode
+                    (Backpressure: drop oldest)            (CUDA context per thread)
+                            ↓                                       ↓
+                    StreamManager coordinates              FrameCallback invoked
+                    network & decode loops                 for each decoded frame
+```
+
+**Key Design Decisions:**
+1. **SPSC Queues**: Single-Producer Single-Consumer model ensures lock-free operation
+   - Each camera has dedicated queue (producer: network thread, consumer: decode thread)
+   - Power-of-2 capacity allows bitwise AND instead of modulo for performance
+
+2. **Persistent CUDA Contexts**: Each decode thread maintains its own CUDA context
+   - Avoids cuCtxSetCurrent() overhead on every decode operation
+   - Work-stealing queue distributes decode tasks across all 4 threads
+
+3. **Cache-Line Padding**: BoundedQueue uses alignas(64) for atomic head/tail
+   - Prevents false sharing between producer and consumer threads
+   - Critical for lock-free performance
+
+4. **Backpressure Handling**: `pushOrDropOldest()` drops oldest frame when queue full
+   - Prevents memory buildup during decode bottlenecks
+   - Maintains real-time responsiveness (drop old frames, keep newest)
+
+5. **Centralized Memory Tracking**: GPUMemoryPool tracks VRAM but doesn't allocate surfaces
+   - NVDEC decoders manage their own surface pools (API requirement)
+   - Provides visibility into total VRAM usage across all cameras
+
+**Cross-Platform Compatibility:**
+- Uses `std::invoke_result_t` instead of deprecated `std::result_of` (C++17)
+- MSVC warning C4324 (structure padding) suppressed with `#pragma warning`
+- GCC warning `-Wunused-parameter` fixed with parameter commenting
+- Builds cleanly on Windows (MSVC 2022) and Linux (GCC 11+)
 
 ### Validation
 ```
@@ -1991,6 +2106,30 @@ Expected:
 - Thread count: <25
 - No frame drops
 ```
+
+**Pending UI Discussion:**
+Before completing Phase 3 validation, need to discuss UI/UX architecture for Phases 4-5.
+This will inform how decoded frames are rendered and whether additional optimization is needed.
+
+### Files Created/Modified (Phase 3)
+
+**New Files:**
+- `src/core/threading/thread_pool.h/cpp` - Generic worker pool
+- `src/core/threading/bounded_queue.h` - Lock-free SPSC queue
+- `src/core/threading/network_thread_pool.h/cpp` - Network receive specialization
+- `src/core/threading/decode_thread_pool.h/cpp` - Hardware decode specialization
+- `src/core/threading/CMakeLists.txt` - Build configuration
+- `src/core/gpu/memory_pool.h/cpp` - VRAM tracking
+- `src/core/stream/camera_stream.h/cpp` - Per-camera state
+- `src/core/stream/stream_manager.h/cpp` - Multi-camera coordinator
+- `src/core/stream/pipeline.h/cpp` - Top-level integration
+- `src/core/stream/CMakeLists.txt` - Build configuration
+
+**Modified Files:**
+- `src/core/gpu/cuda_context.h/cpp` - Added multi-context support
+- `src/core/CMakeLists.txt` - Added Phase 3 sources
+
+**Total Lines Added:** ~2,500 lines of production code
 
 ---
 

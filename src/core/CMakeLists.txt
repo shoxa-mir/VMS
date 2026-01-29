@@ -5,6 +5,7 @@
 set(CORE_SOURCES
     # GPU management
     gpu/cuda_context.cpp
+    gpu/memory_pool.cpp
 
     # Codec/Decoder implementations
     codec/nvdec_decoder.cpp
@@ -16,6 +17,16 @@ set(CORE_SOURCES
     network/rtp_depacketizer.cpp
     network/h264_parser.cpp
     network/bitstream_parser.cpp
+
+    # Threading layer (Phase 3)
+    threading/thread_pool.cpp
+    threading/network_thread_pool.cpp
+    threading/decode_thread_pool.cpp
+
+    # Stream management (Phase 3)
+    stream/camera_stream.cpp
+    stream/stream_manager.cpp
+    stream/pipeline.cpp
 )
 
 # Collect header files (for IDE integration)
@@ -26,6 +37,7 @@ set(CORE_HEADERS
     codec/cpu_decoder.h
     codec/decoder_factory.h
     gpu/cuda_context.h
+    gpu/memory_pool.h
 
     # Network headers
     network/types.h
@@ -33,6 +45,17 @@ set(CORE_HEADERS
     network/rtp_depacketizer.h
     network/h264_parser.h
     network/bitstream_parser.h
+
+    # Threading headers (Phase 3)
+    threading/thread_pool.h
+    threading/bounded_queue.h
+    threading/network_thread_pool.h
+    threading/decode_thread_pool.h
+
+    # Stream management headers (Phase 3)
+    stream/camera_stream.h
+    stream/stream_manager.h
+    stream/pipeline.h
 )
 
 add_library(${CMAKE_PROJECT_NAME}-core STATIC

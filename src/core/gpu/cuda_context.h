@@ -33,6 +33,13 @@ public:
     int getComputeCapabilityMinor() const { return computeMinor_; }
     size_t getTotalMemory() const { return totalMemory_; }
     const char* getDeviceName() const { return deviceName_; }
+
+    // Phase 3: Multi-context support for decode thread pool
+    // Create additional CUDA context for a specific device (for decode threads)
+    static CUcontext createContext(int deviceId = 0);
+
+    // Destroy a CUDA context (for cleanup)
+    static void destroyContext(CUcontext context);
 #endif
 
     // Prevent copying

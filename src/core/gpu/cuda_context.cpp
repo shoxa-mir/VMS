@@ -98,4 +98,55 @@ bool CudaContext::initialize() {
 #endif
 }
 
+#ifdef HAVE_CUDA
+// Phase 3: Multi-context support for decode thread pool
+CUcontext CudaContext::createContext(int deviceId) {
+    // Ensure CUDA is initialized
+    CUresult result = cuInit(0);
+    if (result != CUDA_SUCCESS) {
+        const char* errorStr = nullptr;
+        cuGetErrorString(result, &errorStr);
+        std::cerr << "CudaContext::createContext - CUDA init failed: "
+                  << (errorStr ? errorStr : "Unknown error") << std::endl;
+        return nullptr;
+    }
+
+    // Get device
+    CUdevice device;
+    result = cuDeviceGet(&device, deviceId);
+    if (result != CUDA_SUCCESS) {
+        const char* errorStr = nullptr;
+        cuGetErrorString(result, &errorStr);
+        std::cerr << "CudaContext::createContext - Failed to get device " << deviceId << ": "
+                  << (errorStr ? errorStr : "Unknown error") << std::endl;
+        return nullptr;
+    }
+
+    // Create context
+    CUcontext context;
+    result = cuCtxCreate(&context, 0, device);
+    if (result != CUDA_SUCCESS) {
+        const char* errorStr = nullptr;
+        cuGetErrorString(result, &errorStr);
+        std::cerr << "CudaContext::createContext - Failed to create context: "
+                  << (errorStr ? errorStr : "Unknown error") << std::endl;
+        return nullptr;
+    }
+
+    return context;
+}
+
+void CudaContext::destroyContext(CUcontext context) {
+    if (context) {
+        CUresult result = cuCtxDestroy(context);
+        if (result != CUDA_SUCCESS) {
+            const char* errorStr = nullptr;
+            cuGetErrorString(result, &errorStr);
+            std::cerr << "CudaContext::destroyContext - Failed to destroy context: "
+                      << (errorStr ? errorStr : "Unknown error") << std::endl;
+        }
+    }
+}
+#endif
+
 } // namespace fluxvision
